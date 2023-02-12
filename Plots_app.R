@@ -112,6 +112,7 @@ ui<-fluidPage(
                       "text/comma-separated-values,text/plain",
                       ".csv")), 
           helpText("File size should not exceed 3MB"),
+          br(),
           h5(helpText("Select below parameters to read the file")),
           
           checkboxInput(inputId = 'header', label = 'Header', value = TRUE),
@@ -119,6 +120,11 @@ ui<-fluidPage(
           
           #breakline
           br(),
+          h5(helpText("Select the goodness-of-fit test method")),
+          radioButtons("method","Method",choices=c("White"="white",
+                                                 "Kendall"="kendall"),selected="white")
+          
+          
           
         ),
         mainPanel(
@@ -127,7 +133,7 @@ ui<-fluidPage(
                       tabPanel("Structure", verbatimTextOutput("fileob")),
                       tabPanel("Summary", tableOutput("sum")),
                       tabPanel("Copula Fit",verbatimTextOutput("copula")),
-                      tabPanel("Goodness of Fit",tableOutput("gof")))
+                      tabPanel("Goodness of Fit",verbatimTextOutput("gof")))
         )
       ))
   ))
@@ -741,9 +747,26 @@ server<-function(input,output,session){
           "\nAIC:",round(co$AIC,digits=2),
           "\nBIC:",round(co$BIC,digits=2),
           "\np-value of the independence test:",round(co$p.value.indeptest,digits=2))
-    
-    
-    
+    })
+  output$gof<-renderText({
+    var_all<-data.frame(pobs(data()))
+    var_a <- var_all[,1]
+    var_b <- var_all[,2]
+    co<- BiCopSelect(var_a, var_b, familyset = NA)
+    test<-BiCopGofTest(var_a,var_b,family=co$family,par = co$par,par2 = co$par2,method=input$method)
+    if (input$method=="white")
+      paste("Copula Family:",co$familyname,
+          "\nMethod of test: White",
+          "\nstatistic:",round(test$statistic,digits = 3),
+          "\np-value:",test$p.value)
+    else (
+      paste("Copula Family:",co$familyname,
+            "\nMethod of test: Kendall",
+            "\nStatistic-CvM:",round(test$statistic.CvM,digits = 3),
+            "\nStatistic-KS:",round(test$statistic.KS,digits = 3),
+            "\np-value-CvM:",test$p.value.CvM,
+            "\np-value-KS:",test$p.value.KS)
+    )
   })
   
   
