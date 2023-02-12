@@ -69,7 +69,8 @@ ui<-fluidPage(
                   #Different ranges for parameterd of the corresponding copula
                   sliderInput("alpha","alpha value",value=4.5,min=-1,max=10,step=0.1),
                   
-                  
+                  conditionalPanel(condition="input.types=='Elliptical Copula'&& input.no2=='t'",
+                                   sliderInput("df","degree of freedom",value=4,min=1,max=100)),
                   conditionalPanel(condition="input.types=='Extreme Value Copula'&& input.no3=='tawn'",
                                    sliderInput("beta","beta value",min=0,max=1,value=0.5),
                                    sliderInput("r","r value",min=1,max=10,value=5.5)),
@@ -122,7 +123,7 @@ ui<-fluidPage(
           br(),
           h5(helpText("Select the goodness-of-fit test method")),
           radioButtons("method","Method",choices=c("White"="white",
-                                                 "Kendall"="kendall"),selected="white")
+                                                   "Kendall"="kendall"),selected="white")
           
           
           
@@ -242,14 +243,14 @@ server<-function(input,output,session){
     
     if (input$types=="Elliptical Copula"&&input$plots=="1"){ 
       if ( input$no2=="norm" || input$no2=="cauchy"){
-        R = rellipticalCopula(n = 3000, rho = input$alpha, param = NULL, type =input$no2)
+        R = rellipticalCopula(n = 2000, rho = input$alpha, param = NULL, type =input$no2)
         plot(x = R[, 1], y = R[, 2], xlim = c(0, 1), ylim = c(0, 1),
              xlab = "u", ylab = "v", pch = 19,col="steelblue")
         grid()
         title(main = paste("Elliptical Copula:",input$no2,"\nrho = ",input$alpha))}
       
       else {
-        R = rellipticalCopula(n = 3000, rho = input$alpha, param = 4, type =input$no2)
+        R = rellipticalCopula(n = 2000, rho = input$alpha, param =input$df, type =input$no2)
         plot(x = R[, 1], y = R[, 2], xlim = c(0, 1), ylim = c(0, 1),
              xlab = "u", ylab = "v", pch = 19,col="steelblue")
         grid()
@@ -260,19 +261,19 @@ server<-function(input,output,session){
     
     if (input$types=="Extreme Value Copula"&&input$plots=="1"){
       if (input$no3=="gumbel" || input$no3=="galambos" || input$no3=="husler.reiss"){
-        R = revCopula(1000, param = input$alpha, type = input$no3)
+        R = revCopula(2000, param = input$alpha, type = input$no3)
         plot(R, pch = 19, col = "steelblue")
         grid()
         title(main = paste("Extreme Copula:",input$no3,"\ndelta = ",input$alpha))}
       
       else if (input$no3=="tawn"){
-        R = revCopula(1000, param =c(input$alpha,input$beta,input$r), type ="tawn")
+        R = revCopula(2000, param =c(input$alpha,input$beta,input$r), type ="tawn")
         plot(R, pch = 19, col = "steelblue")
         grid()
         title(main = paste("Extreme Copula:",input$no3,"\nalpha = ",input$alpha," beta = ",input$beta," r = ",input$r))}
       
       else {
-        R = revCopula(1000, param =c(input$alpha,input$theta), type = "bb5")
+        R = revCopula(2000, param =c(input$alpha,input$theta), type = "bb5")
         plot(R, pch = 19, col = "steelblue")
         grid()
         title(main = paste("Extreme Copula:",input$no3,"\ndelta = ",input$alpha," theta = ",input$theta))}
@@ -737,6 +738,7 @@ server<-function(input,output,session){
   })
   
   output$copula<-renderText({
+    if(is.null(data())){return ()}
     var_all<-data.frame(pobs(data()))
     var_a <- var_all[,1]
     var_b <- var_all[,2]
@@ -747,8 +749,9 @@ server<-function(input,output,session){
           "\nAIC:",round(co$AIC,digits=2),
           "\nBIC:",round(co$BIC,digits=2),
           "\np-value of the independence test:",round(co$p.value.indeptest,digits=2))
-    })
+  })
   output$gof<-renderText({
+    if(is.null(data())){return ()}
     var_all<-data.frame(pobs(data()))
     var_a <- var_all[,1]
     var_b <- var_all[,2]
@@ -756,9 +759,9 @@ server<-function(input,output,session){
     test<-BiCopGofTest(var_a,var_b,family=co$family,par = co$par,par2 = co$par2,method=input$method)
     if (input$method=="white")
       paste("Copula Family:",co$familyname,
-          "\nMethod of test: White",
-          "\nstatistic:",round(test$statistic,digits = 3),
-          "\np-value:",test$p.value)
+            "\nMethod of test: White",
+            "\nstatistic:",round(test$statistic,digits = 3),
+            "\np-value:",test$p.value)
     else (
       paste("Copula Family:",co$familyname,
             "\nMethod of test: Kendall",
