@@ -5,9 +5,9 @@ account: e9z9fr-ke-chen
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 8256480
-bundleId: 6823825
+bundleId: 6838051
 url: https://e9z9fr-ke-chen.shinyapps.io/Copulae_InteractivePlots/
-when: 1675868319.68671
-lastSyncTime: 1675868319.68672
+when: 1676224302.71069
+lastSyncTime: 1676224302.71075
 asMultiple: FALSE
 asStatic: FALSE

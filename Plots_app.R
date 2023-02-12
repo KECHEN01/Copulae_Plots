@@ -737,6 +737,7 @@ server<-function(input,output,session){
   })
   
   output$copula<-renderText({
+    if(is.null(data())){return ()}
     var_all<-data.frame(pobs(data()))
     var_a <- var_all[,1]
     var_b <- var_all[,2]
@@ -749,6 +750,7 @@ server<-function(input,output,session){
           "\np-value of the independence test:",round(co$p.value.indeptest,digits=2))
     })
   output$gof<-renderText({
+    if(is.null(data())){return ()}
     var_all<-data.frame(pobs(data()))
     var_a <- var_all[,1]
     var_b <- var_all[,2]
