@@ -19,7 +19,7 @@ ui<-fluidPage(
                   #Number of Archimedean Copula   
                   
                   conditionalPanel(condition="input.types=='Archimedean Copula'",
-                                   numericInput("no",label="No. of Copula",value=1,min=1,max=22),
+                                   selectInput("no",label="No. of Copula",choices=c(1:22),selected=1),
                                    selectInput("names",label="Names of Copula",choices=list("Clayton"=1,
                                                                                             "Ali-Mikhail-Hag"=3,
                                                                                             "Grumbel-Hongard"=4,
@@ -27,9 +27,7 @@ ui<-fluidPage(
                                                                                             "Joe-Frank"=6,
                                                                                             "Gumbel-Barnett"=9,
                                                                                             "Genest-Ghoudi"=15),selected=1)),                                      
-                  #Except the number of Copula outside 1-22
-                  conditionalPanel(condition= "input.no<1 || input.no>22",
-                                   p("There is no Copula for that number!")),
+
                   
                   #Number of Elliptical Copula                           
                   conditionalPanel(condition="input.types=='Elliptical Copula'&& input.plots=='1'",
@@ -134,10 +132,11 @@ ui<-fluidPage(
                       tabPanel("Structure", verbatimTextOutput("fileob")),
                       tabPanel("Summary", tableOutput("sum")),
                       tabPanel("Copula Fit",verbatimTextOutput("copula")),
-                      tabPanel("Goodness of Fit",verbatimTextOutput("gof")))
+                      tabPanel("Goodness of Fit",verbatimTextOutput("gof"),
+                               fluidRow(splitLayout(column(6,plotOutput(outputId="plot1", width="300px",height="300px")),  
+                                                    column(6,plotOutput(outputId="plot2", width="300px",height="300px")))))
         )
-      ))
-  ))
+      )))))
 
 server<-function(input,output,session){
   
@@ -171,7 +170,7 @@ server<-function(input,output,session){
       updateSliderInput(session,"alpha",min=2,max=10,step=0.1,value=6)
     
     if ((new_no== 5 || new_no==17 ))
-      updateSliderInput(session,"alpha",min=-10,max=10,step=0.1,value=0.5)
+      updateSliderInput(session,"alpha",min=-20,max=20,step=0.1,value=1)
     
     if (types=="Elliptical Copula")
       updateSliderInput(session,"alpha",label="rho value",min=-1,max=1,value=0)
@@ -237,7 +236,7 @@ server<-function(input,output,session){
                  })
       plot(R, xlab = "U", ylab = "V", pch = 19, col = "steelblue")
       grid()
-      title(main = paste("Archimedean Copula No:",input$no,Names[input$no],"\nalpha = ",input$alpha))}
+      title(main = paste("Archimedean Copula No:",input$no,Names[as.numeric(input$no)],"\nalpha = ",input$alpha))}
     
     ##Elliptical
     
@@ -254,7 +253,7 @@ server<-function(input,output,session){
         plot(x = R[, 1], y = R[, 2], xlim = c(0, 1), ylim = c(0, 1),
              xlab = "u", ylab = "v", pch = 19,col="steelblue")
         grid()
-        title(main = paste("Elliptical Copula:",input$no2,"\nrho = ",input$alpha))}
+        title(main = paste("Elliptical Copula:",input$no2,"\nrho = ",input$alpha,"\ndegree of freedom =",input$df))}
     }
     
     ##Extreme Value
@@ -477,6 +476,7 @@ server<-function(input,output,session){
     
     if (input$types=="Archimedean Copula"&& input$plots =="3"&&input$plot2=="1" ){
       uv = grid2d(x = (1:(input$N-1)/input$N))
+      
       D=tryCatch(darchmCopula(u = uv, v = uv, alpha = input$alpha, type =as.character(input$no),output ="list", alternative = FALSE),
                  error = function(e){
                    if (input$no== 2 || input$no==4 || input$no==6 || input$no==8 || input$no==12 || input$no==14 || input$no==15 || input$no==21)
@@ -737,6 +737,7 @@ server<-function(input,output,session){
     data()
   })
   
+  
   output$copula<-renderText({
     if(is.null(data())){return ()}
     var_all<-data.frame(pobs(data()))
@@ -750,28 +751,60 @@ server<-function(input,output,session){
           "\nBIC:",round(co$BIC,digits=2),
           "\np-value of the independence test:",round(co$p.value.indeptest,digits=2))
   })
+  
   output$gof<-renderText({
     if(is.null(data())){return ()}
     var_all<-data.frame(pobs(data()))
     var_a <- var_all[,1]
     var_b <- var_all[,2]
     co<- BiCopSelect(var_a, var_b, familyset = NA)
-    test<-BiCopGofTest(var_a,var_b,family=co$family,par = co$par,par2 = co$par2,method=input$method)
-    if (input$method=="white")
-      paste("Copula Family:",co$familyname,
+    check<-grepl("Tawn",co$familyname)
+    if (input$method=="white"){
+      if(check==TRUE){
+        paste("Copula family not implemented.")
+        } else if (co$family %in% c(7, 8, 9, 10, 17, 18, 19, 20, 27, 28, 29, 30, 37, 38, 39, 40)){
+        paste("The goodness-of-fit test based on White's information matrix equality is not implemented for the BB copulas.")
+        } else if (check==FALSE){
+          test<-BiCopGofTest(var_a,var_b,family=co$family,par = co$par,par2 = co$par2,method=input$method)
+          paste("Copula Family:",co$familyname,
             "\nMethod of test: White",
             "\nstatistic:",round(test$statistic,digits = 3),
-            "\np-value:",test$p.value)
-    else (
-      paste("Copula Family:",co$familyname,
+            "\np-value:",test$p.value)}}
+    
+    else{
+      if(check==TRUE){
+        paste("Copula family not implemented.")
+      } else if (co$family == 2){
+        paste("The goodness-of-fit test based on Kendall's process is not implemented for the t-copula.")
+      } else if (check==FALSE){
+        test<-BiCopGofTest(var_a,var_b,family=co$family,par = co$par,par2 = co$par2,method=input$method)
+        paste("Copula Family:",co$familyname,
             "\nMethod of test: Kendall",
             "\nStatistic-CvM:",round(test$statistic.CvM,digits = 3),
             "\nStatistic-KS:",round(test$statistic.KS,digits = 3),
             "\np-value-CvM:",test$p.value.CvM,
-            "\np-value-KS:",test$p.value.KS)
-    )
+            "\np-value-KS:",test$p.value.KS)}}
   })
-  
-  
+
+
+    output$plot1<-renderPlot({
+      if(is.null(data())){return ()}
+      var_all<-data.frame(pobs(data()))
+      var_a <- var_all[,1]
+      var_b <- var_all[,2]
+      co<- BiCopSelect(var_a, var_b, familyset = NA)
+      obj <-BiCop(family = co$family, par = co$par, par2 = co$par2)
+      plot(obj,type="contour",main="Contour Plot")
+      })
+    
+    output$plot2<-renderPlot({
+      if(is.null(data())){return ()}
+      var_all<-data.frame(pobs(data()))
+      var_a <- var_all[,1]
+      var_b <- var_all[,2]
+      co<- BiCopSelect(var_a, var_b, familyset = NA)
+      obj <-BiCop(family = co$family, par = co$par, par2 = co$par2)
+      plot(obj,type="surface",main="Density") # surface plot of copula density
+      })
 }
 shinyApp(ui=ui,server=server)
