@@ -121,7 +121,12 @@ ui<-fluidPage(
           br(),
           h5(helpText("Select the goodness-of-fit test method")),
           radioButtons("method","Method",choices=c("White"="white",
-                                                   "Kendall"="kendall"),selected="white")
+                                                   "Kendall"="kendall"),selected="white"),
+          br(),
+          h5(helpText("Select the marginal distribution of the graph")),
+          radioButtons("margin","Marginal Distributions",choices=c("Normal "="norm",
+                                                                   "Uniform"="unif"),
+                       selected="norm")
           
           
           
@@ -700,11 +705,11 @@ server<-function(input,output,session){
     updateSelectInput(session, "names",
                       selected = y)
   })
-  
-  data <- reactive({
-    file1 <- input$file
+
+  data <- eventReactive(input$file,{
+    file1<-input$file
     if(is.null(file1)){return()} 
-    read.table(file=file1$datapath, sep=",", header = input$header, stringsAsFactors = input$stringAsFactors)
+    read.csv(file=file1$datapath, sep=",", header = input$header, stringsAsFactors = input$stringAsFactors)
   })
   
   #To show the Summary of the input file in a table format
@@ -716,7 +721,7 @@ server<-function(input,output,session){
   
   #To show the Structure of the input file
   output$fileob <- renderPrint({
-    if(is.null(input$file)){return ()}
+    if(is.null(data())){return ()}
     str(input$file)
   })
   
@@ -740,7 +745,7 @@ server<-function(input,output,session){
   
   output$copula<-renderText({
     if(is.null(data())){return ()}
-    var_all<-data.frame(pobs(data()))
+    var_all<-pobs(data())
     var_a <- var_all[,1]
     var_b <- var_all[,2]
     co<- BiCopSelect(var_a, var_b, familyset = NA)
@@ -761,7 +766,7 @@ server<-function(input,output,session){
     check<-grepl("Tawn",co$familyname)
     if (input$method=="white"){
       if(check==TRUE){
-        paste("Copula family not implemented.")
+        paste("Tawn Copula family not implemented.")
         } else if (co$family %in% c(7, 8, 9, 10, 17, 18, 19, 20, 27, 28, 29, 30, 37, 38, 39, 40)){
         paste("The goodness-of-fit test based on White's information matrix equality is not implemented for the BB copulas.")
         } else if (check==FALSE){
@@ -773,7 +778,7 @@ server<-function(input,output,session){
     
     else{
       if(check==TRUE){
-        paste("Copula family not implemented.")
+        paste("Tawn Copula family not implemented.")
       } else if (co$family == 2){
         paste("The goodness-of-fit test based on Kendall's process is not implemented for the t-copula.")
       } else if (check==FALSE){
@@ -794,7 +799,16 @@ server<-function(input,output,session){
       var_b <- var_all[,2]
       co<- BiCopSelect(var_a, var_b, familyset = NA)
       obj <-BiCop(family = co$family, par = co$par, par2 = co$par2)
+      if (input$margin=="norm"){
       plot(obj,type="contour",main="Contour Plot")
+      points(qnorm(var_a),qnorm(var_b),col="grey",pch=20)
+      contour(obj,add=TRUE,lwd=2)}
+      else{
+      plot(obj,type="contour",main="Contour Plot",margin="unif")
+      points(var_a,var_b,col="grey",pch=20)
+      contour(obj,add=TRUE,lwd=2,margin="unif")}
+      
+      
       })
     
     output$plot2<-renderPlot({
